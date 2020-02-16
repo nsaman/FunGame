@@ -75,7 +75,7 @@ public abstract class GatheringTask : Task
     {
         Inventory thisInventory = gameObject.GetComponent<Inventory>();
 
-        if (thisInventory.getTotalWeight() >= MAX_WEIGHT)
+        if (thisInventory.weight >= MAX_WEIGHT)
             currentStep = GatheringStep.Idle;
 
         // todo add gathering rate impact by tools/skill
@@ -88,25 +88,11 @@ public abstract class GatheringTask : Task
             gatherTimer -= totalGather * gatherRate;
 
             Inventory targetInventory = target.target.root.GetComponent<Inventory>();
-            List<InventoryEntry> thisInventoryList = thisInventory.inventory;
+            uint realGatherAmount = System.Math.Min(targetInventory.getTotalCountByTypes(Tags.Resources), totalGather);
 
-            InventoryEntry targetResourceEntry = targetInventory.findFirstEntryOfTypes(Tags.Resources);
+            Inventory.transferTypes(targetInventory, thisInventory, Tags.Resources, realGatherAmount);
 
-            // todo if we have max stack logic, implement that here
-            InventoryEntry thisResourceEntry = thisInventory.findFirstEntry(targetResourceEntry.item);
-            // implement max inventory logic here
-            if (thisResourceEntry == null)
-            {
-                thisResourceEntry = new InventoryEntry(targetResourceEntry.item, 0u);
-                thisInventoryList.Add(thisResourceEntry);
-            }
-
-            // need to add roll over logic to this if the are multiple stacks implemented on gather gameobject inventories
-            uint realGatherAmount = targetResourceEntry.count < totalGather ? targetResourceEntry.count : totalGather;
-
-            Inventory.transfer(targetResourceEntry, thisResourceEntry, realGatherAmount);
-
-            if (targetResourceEntry.count <= 0)
+            if (targetInventory.getTotalCountByTypes(Tags.Resources) <= 0)
             {
                 Destroy(target.target.root.gameObject);
                 currentStep = GatheringStep.Idle;
@@ -137,7 +123,7 @@ public abstract class GatheringTask : Task
 
         Inventory inventory = gameObject.GetComponent<Inventory>();
 
-        if (inventory.getTotalWeight() == 0)
+        if (inventory.weight == 0)
         {
             target.target = findClosestByTag(targetTag);
             GetComponent<NavMeshAgent>().enabled = true;
@@ -159,7 +145,7 @@ public abstract class GatheringTask : Task
                 }
             }
         }
-        else if (inventory.getTotalWeight() >= MAX_WEIGHT)
+        else if (inventory.weight >= MAX_WEIGHT)
         {
             dropOffTownCenter();
         }

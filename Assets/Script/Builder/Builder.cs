@@ -102,24 +102,9 @@ public abstract class Builder : MonoBehaviour {
     {
         foreach (KeyValuePair<string, uint> costEntry in build.Cost)
         {
-            bool costEntryEvaluated = false;
-
-            // todo add logic to handle multiple stacks of inventoryEntry and roll over to next entry if we have multiple same entry types
-            foreach (InventoryEntry inventoryEntry in inventory.inventory)
-            {
-                if (costEntry.Key.Equals(inventoryEntry.item))
-                {
-                    if (costEntry.Value <= inventoryEntry.count)
-                        costEntryEvaluated = true;
-                    else
-                        return false;
-                }
-            }
-
-            if (!costEntryEvaluated)
+            if (inventory.getTotalCountByType(costEntry.Key) < costEntry.Value)
                 return false;
         }
-
         return true;
     }
 

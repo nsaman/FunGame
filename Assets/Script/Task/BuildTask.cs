@@ -90,20 +90,21 @@ public class BuildTask : Task {
             buildTimer -= totalBuild * buildRate;
             uint buildTracker = 0;
 
-            List<InventoryEntry> resourceEntries = inventory.findEntriesOfTypes(Tags.Resources);
+            List<InventoryEntry> resourceEntries = inventory.getEntriesOfTypes(Tags.Resources);
             uint countOfDepletedResources = 0;
 
             foreach (InventoryEntry inventoryEntry in resourceEntries)
             {
-                if (buildSiteHandler.BuildPlan.Cost.ContainsKey(inventoryEntry.item) && inventoryEntry.count > 0)
+                if (buildSiteHandler.BuildPlan.Cost.ContainsKey(inventoryEntry.item.Tag) && inventoryEntry.count > 0)
                 {
                     // deez variable names lul
                     uint leftOverBuild = totalBuild - buildTracker;
-                    uint leftOverBuilt = buildSiteHandler.BuildPlan.Cost[inventoryEntry.item] - buildSiteHandler.Built[inventoryEntry.item];
+                    uint leftOverBuilt = buildSiteHandler.BuildPlan.Cost[inventoryEntry.item.Tag] - buildSiteHandler.Built[inventoryEntry.item.Tag];
                     uint finalBuildAmount = System.Math.Min(leftOverBuilt, leftOverBuild);
                     totalBuild += finalBuildAmount;
                     inventoryEntry.count -= finalBuildAmount;
-                    buildSiteHandler.Built[inventoryEntry.item] += finalBuildAmount;
+                    inventory.setTotalWeight();
+                    buildSiteHandler.Built[inventoryEntry.item.Tag] += finalBuildAmount;
 
                     if(buildSiteHandler.NotifyBuild())
                     {
@@ -126,10 +127,10 @@ public class BuildTask : Task {
 
     private void ReturningToResourcesUpdate()
     {
-        float distanceDropOff = Vector3.Distance(target.target.position, transform.position);
+        float distance = Vector3.Distance(target.target.position, transform.position);
 
         // todo calculate stopping distance based on size of drop point
-        if (distanceDropOff <= 3)
+        if (distance <= 3)
         {
             Inventory.transferAllOfTypes(gameObject.GetComponent<Inventory>(), target.target.root.gameObject.GetComponent<Inventory>(), Tags.Resources);
             if (completingTask)
@@ -192,7 +193,7 @@ public class BuildTask : Task {
 
             if (Vector3.Distance(target.target.position, bestPlaceToGetResources.position) <= 2)
             {
-                Inventory.transferUpToOfTypes(bestPlaceToGetResources.root.GetComponent<Inventory>(), inventory, MAX_WEIGHT, resourcesLeftToBuild);
+                Inventory.transferTypes(bestPlaceToGetResources.root.GetComponent<Inventory>(), inventory, resourcesLeftToBuild, MAX_WEIGHT);
             } else
             {
                 target.target = bestPlaceToGetResources;
