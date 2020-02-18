@@ -90,21 +90,21 @@ public class BuildTask : Task {
             buildTimer -= totalBuild * buildRate;
             uint buildTracker = 0;
 
-            List<InventoryEntry> resourceEntries = inventory.getEntriesOfTypes(Tags.Resources);
+            Dictionary<Item, uint> resourceEntries = inventory.getEntriesOfTypes(Tags.Resources);
             uint countOfDepletedResources = 0;
 
-            foreach (InventoryEntry inventoryEntry in resourceEntries)
+            foreach (KeyValuePair<Item, uint> inventoryEntry in resourceEntries)
             {
-                if (buildSiteHandler.BuildPlan.Cost.ContainsKey(inventoryEntry.item.Tag) && inventoryEntry.count > 0)
+                if (buildSiteHandler.BuildPlan.Cost.ContainsKey(inventoryEntry.Key.Tag) && inventoryEntry.Value > 0)
                 {
                     // deez variable names lul
                     uint leftOverBuild = totalBuild - buildTracker;
-                    uint leftOverBuilt = buildSiteHandler.BuildPlan.Cost[inventoryEntry.item.Tag] - buildSiteHandler.Built[inventoryEntry.item.Tag];
+                    uint leftOverBuilt = buildSiteHandler.BuildPlan.Cost[inventoryEntry.Key.Tag] - buildSiteHandler.Built[inventoryEntry.Key.Tag];
                     uint finalBuildAmount = System.Math.Min(leftOverBuilt, leftOverBuild);
                     totalBuild += finalBuildAmount;
-                    inventoryEntry.count -= finalBuildAmount;
+                    inventory.remove(inventoryEntry.Key.Tag, finalBuildAmount);
                     inventory.setTotalWeight();
-                    buildSiteHandler.Built[inventoryEntry.item.Tag] += finalBuildAmount;
+                    buildSiteHandler.Built[inventoryEntry.Key.Tag] += finalBuildAmount;
 
                     if(buildSiteHandler.NotifyBuild())
                     {
@@ -116,7 +116,7 @@ public class BuildTask : Task {
                 else
                     countOfDepletedResources++;
                 
-                if (inventoryEntry.count == 0)
+                if (inventoryEntry.Value == 0)
                     countOfDepletedResources++;
             }
 

@@ -6,8 +6,8 @@ public class Berries : MonoBehaviour {
     void Start()
     {
         // todo, adjust resources based on size
-        List<InventoryEntry> foods = new List<InventoryEntry>();
-        foods.Add(new InventoryEntry(new Food(), 100));
+        Dictionary<Item, uint> foods = new Dictionary<Item, uint>();
+        foods.Add(new Food(), 100);
         GetComponent<Inventory>().inventory.Add(Tags.Food, foods);
         GetComponent<Inventory>().setTotalWeight();
     }
