@@ -1,7 +1,4 @@
-﻿using UnityEngine;
-using System.Collections;
-
-public class BerryGatheringTask : GatheringTask
+﻿public class BerryGatheringTask : GatheringTask
 {
     // Use this for initialization
     public override void Start()

@@ -2,6 +2,7 @@
 {
     BerryGathering,
     BuildTask,
+    CraftingTask,
     Idle,
     WoodGathering
 }

@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections.Generic;
 
 public abstract class GatheringTask : Task
 {
@@ -22,6 +21,29 @@ public abstract class GatheringTask : Task
         currentStep = GatheringStep.Idle;
         gatherTimer = 0;
         waitForMoreResourcesAtTownCenter = false;
+        equipBestForTask(targetTag);
+    }
+
+    void OnEnable()
+    {
+        completingTask = false;
+        float distanceDropOff = Vector3.Distance(target.target.position, transform.position);
+
+        // todo calculate stopping distance based on size of drop point
+        if (distanceDropOff <= 3)
+        {
+            Inventory transferInventory = target.target.root.gameObject.GetComponent<Inventory>();
+            Inventory.transferAll(inventory, transferInventory);
+            transferBestForTask(transferInventory, targetTag);
+            equipBestForTask(targetTag);
+            Item bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, targetTag, inventory.getEmptySlots());
+            if (bestItemCanCraft != null)
+            {
+                taskHandler.pushTask(Tasks.CraftingTask);
+                GetComponent<CraftingTask>().BuildItem = bestItemCanCraft;
+            }
+            currentStep = GatheringStep.Idle;
+        }
     }
 
     // Update is called once per frame
@@ -73,13 +95,11 @@ public abstract class GatheringTask : Task
 
     void GatheringUpdate()
     {
-        Inventory thisInventory = gameObject.GetComponent<Inventory>();
-
-        if (thisInventory.weight >= MAX_WEIGHT)
+        if (inventory.weight >= MAX_WEIGHT)
             currentStep = GatheringStep.Idle;
 
         // todo add gathering rate impact by tools/skill
-        float gatherRate = 1;
+        float gatherRate = 1 / (1 + getInteractionEquipedMultiplier(targetTag));
         gatherTimer += Time.deltaTime;
         if (gatherTimer >= gatherRate)
         {
@@ -90,7 +110,7 @@ public abstract class GatheringTask : Task
             Inventory targetInventory = target.target.root.GetComponent<Inventory>();
             uint realGatherAmount = System.Math.Min(targetInventory.getTotalCountByTypes(Tags.Resources), totalGather);
 
-            Inventory.transferTypes(targetInventory, thisInventory, Tags.Resources, realGatherAmount);
+            Inventory.transferTypes(targetInventory, inventory, Tags.Resources, realGatherAmount);
 
             if (targetInventory.getTotalCountByTypes(Tags.Resources) <= 0)
             {
@@ -107,11 +127,20 @@ public abstract class GatheringTask : Task
         // todo calculate stopping distance based on size of drop point
         if (distanceDropOff <= 3)
         {
-            Inventory.transferAllOfTypes(gameObject.GetComponent<Inventory>(), target.target.root.gameObject.GetComponent<Inventory>(), Tags.Resources);
+            Inventory transferInventory = target.target.root.gameObject.GetComponent<Inventory>();
+            Inventory.transferAll(inventory, transferInventory);
             if (completingTask)
             {
                 taskHandler.notifyTaskCompleted();
                 return;
+            }
+            transferBestForTask(transferInventory, targetTag);
+            equipBestForTask(targetTag);
+            Item bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, targetTag, inventory.getEmptySlots());
+            if(bestItemCanCraft != null)
+            {
+                taskHandler.pushTask(Tasks.CraftingTask);
+                GetComponent<CraftingTask>().BuildItem = bestItemCanCraft;
             }
             currentStep = GatheringStep.Idle;
         }
@@ -121,9 +150,7 @@ public abstract class GatheringTask : Task
     {
         dontMove();
 
-        Inventory inventory = gameObject.GetComponent<Inventory>();
-
-        if (inventory.weight == 0)
+        if (inventory.getTotalCountByTypes(Tags.Resources) == 0)
         {
             target.target = findClosestByTag(targetTag);
             GetComponent<NavMeshAgent>().enabled = true;

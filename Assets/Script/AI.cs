@@ -13,15 +13,14 @@ public class AI {
 
     public void handleTeam()
     {
-        
+
+        System.Random rnd = new System.Random();
         foreach (TeamPointer teamPointer in teamController.Registry[Tags.Npc])
         {
             TaskHandler taskHandler = teamPointer.gameObject.GetComponent<TaskHandler>();
             
             if (taskHandler.CurrentTask is IdleTask)
             {
-                System.Random rnd = new System.Random();
-
                 if(rnd.Next(1, 3) == 1)
                     taskHandler.setTask(Tasks.WoodGathering);
                 else
@@ -35,7 +34,7 @@ public class AI {
 
             Inventory inventory = teamPointer.transform.root.GetComponent<Inventory>();
 
-            if (tryBuild && Builds.canBuild(inventory, Builds.House) && GameObject.FindGameObjectsWithTag(Tags.BuildSite).Length == 0)
+            if (tryBuild && teamController.Registry.ContainsKey(Tags.BuildSite) && teamController.Registry[Tags.BuildSite].Count == 0 && Builds.canBuild(inventory, Builds.House))
             {
                 Quaternion tcQuaternion = teamPointer.transform.root.rotation;
                 // + 2 is the space between buildings

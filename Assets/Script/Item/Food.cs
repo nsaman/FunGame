@@ -4,5 +4,6 @@
         stackable = true;
         tag = Tags.Food;
         weight = 1;
+        craftable = false;
     }
 }

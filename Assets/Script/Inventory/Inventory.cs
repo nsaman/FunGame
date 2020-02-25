@@ -9,12 +9,12 @@ public class Inventory : MonoBehaviour {
     public float weight;
 
 	// Use this for initialization
-	void Awake() {
+	protected void Awake() {
 		inventory = new Dictionary<string, Dictionary<Item,uint>>();
 	}
-	
-	// Update is called once per frame
-	void Update () {
+
+    // Update is called once per frame
+    protected void Update () {
     }
 
     public void setTotalWeight()
@@ -64,6 +64,28 @@ public class Inventory : MonoBehaviour {
         return count;
     }
 
+    public float getTotalWeightByTypes(ICollection<string> types)
+    {
+        float totalWeight = 0;
+        foreach (string type in types)
+            totalWeight += getTotalWeightByType(type);
+
+        return totalWeight;
+    }
+
+    public float getTotalWeightByType(string type)
+    {
+        if (!inventory.ContainsKey(type))
+            return 0;
+
+        float totalWeight = 0;
+        foreach (KeyValuePair<Item, uint> inventoryEntry in inventory[type])
+        {
+            totalWeight += inventoryEntry.Value * inventoryEntry.Key.Weight;
+        }
+        return totalWeight;
+    }
+
     public KeyValuePair<Item, uint> findFirstEntryOfTypes(ICollection<string> keys)
     {
         foreach (string key in keys)
@@ -89,31 +111,61 @@ public class Inventory : MonoBehaviour {
             return default(KeyValuePair<Item, uint>);
     }
 
-    public bool remove(string tag, uint amount)
+    public virtual void add(Item item, uint count)
+    {
+        createEntry(item);
+
+        inventory[item.Tag][item] += count;
+
+        setTotalWeight();
+    }
+
+    public virtual bool remove(string tag, uint amount)
     {
         if (!inventory.ContainsKey(tag))
             return false;
 
         uint leftToRemove = amount;
-        HashSet<Item> toRemove = new HashSet<Item>();
         Dictionary<Item, uint> copy = new Dictionary<Item, uint>(inventory[tag]);
         foreach (KeyValuePair<Item, uint> inventoryEntry in copy)
         {
             uint realRemove = System.Math.Min(inventoryEntry.Value, leftToRemove);
             inventory[tag][inventoryEntry.Key] = inventoryEntry.Value - realRemove;
             if (inventory[tag][inventoryEntry.Key] == 0)
-                toRemove.Add(inventoryEntry.Key);
+                inventory[tag].Remove(inventoryEntry.Key);
             leftToRemove -= realRemove;
-        }
-
-        foreach(Item item in toRemove)
-        {
-            inventory[tag].Remove(item);
         }
 
         setTotalWeight();
 
         return leftToRemove == 0;
+    }
+
+    public virtual bool remove(Item item, uint amount)
+    {
+        if (!containsItem(item))
+            return false;
+
+        uint leftToRemove = amount;
+        Dictionary<Item, uint> copy = new Dictionary<Item, uint>(inventory[item.Tag]);
+        foreach (KeyValuePair<Item, uint> inventoryEntry in copy)
+        {
+            uint realRemove = System.Math.Min(inventoryEntry.Value, leftToRemove);
+            inventory[item.Tag][inventoryEntry.Key] = inventoryEntry.Value - realRemove;
+            if (inventory[item.Tag][inventoryEntry.Key] == 0)
+                inventory[item.Tag].Remove(inventoryEntry.Key);
+            leftToRemove -= realRemove;
+        }
+
+        setTotalWeight();
+
+        return leftToRemove == 0;
+    }
+
+    public static void transferAll(Inventory sendingInventory, Inventory receivingInventory)
+    {
+        foreach (string type in sendingInventory.inventory.Keys)
+            transferAllOfType(sendingInventory, receivingInventory, type);
     }
 
     public static void transferAllOfTypes(Inventory sendingInventory, Inventory receivingInventory, ICollection<string> types)
@@ -140,8 +192,6 @@ public class Inventory : MonoBehaviour {
         uint leftToTransfer = count;
         Dictionary<Item, uint> sendingEntries = sendingInventory.getOrCreate(type);
 
-        HashSet<Item> toRemove = new HashSet<Item>();
-
         // todo add logic here that would prevent overfilling max inventory sizes, max slot sizes
         Dictionary < Item, uint> copy = new Dictionary<Item, uint>(sendingEntries);
         foreach (KeyValuePair<Item, uint> sendingEntry in copy)
@@ -149,14 +199,24 @@ public class Inventory : MonoBehaviour {
             uint realTransfer = System.Math.Min(leftToTransfer, sendingEntry.Value);
             sendingInventory.remove(type, realTransfer);
 
-            KeyValuePair<Item, uint> receivingEntry = receivingInventory.getOrCreateEntry(type, sendingEntry.Key);
-            receivingInventory.inventory[type][receivingEntry.Key] += realTransfer;
+            receivingInventory.add(sendingEntry.Key, realTransfer);
+
             leftToTransfer -= realTransfer;
         }
 
         receivingInventory.setTotalWeight();
 
         return count - leftToTransfer;
+    }
+
+    public bool receive(Inventory sendingInventory, Item item)
+    {
+        if (!sendingInventory.remove(item, 1))
+            return false;
+
+        add(item, 1);
+
+        return true;
     }
 
     public Dictionary<Item, uint> getOrCreate(string type)
@@ -170,15 +230,12 @@ public class Inventory : MonoBehaviour {
         }
     }
 
-    public KeyValuePair<Item, uint> getOrCreateEntry(string type, Item item)
+    public void createEntry(Item item)
     {
-        if (!inventory.ContainsKey(type))
-            inventory.Add(type, new Dictionary<Item, uint>());
+        Dictionary<Item, uint> items = getOrCreate(item.Tag);
 
-        if (inventory[type].Count == 0)
-            inventory[type].Add(item, 0);
-
-        return inventory[type].ToList()[0];
+        if (!items.ContainsKey(item))
+            items.Add(item, 0);
     }
 
     public bool containsAny(ICollection<string> types)
@@ -195,5 +252,26 @@ public class Inventory : MonoBehaviour {
         }
 
         return false;
+    }
+
+    public bool containsItem(Item item)
+    {
+        return containsItem(this, item);
+    }
+
+    public static bool containsItem(Inventory inventory, Item item)
+    {
+        return inventory.inventory.ContainsKey(item.Tag) && inventory.inventory[item.Tag].ContainsKey(item) && inventory.inventory[item.Tag][item] > 0;
+    }
+
+    public bool canBuild(Item item)
+    {
+        foreach (KeyValuePair<string, uint> cost in item.CraftCost)
+        {
+            if (getTotalCountByType(cost.Key) < cost.Value)
+                return false;
+        }
+
+        return true;
     }
 }

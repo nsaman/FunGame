@@ -5,5 +5,6 @@
         stackable = true;
         tag = Tags.Wood;
         weight = 1;
+        craftable = false;
     }
 }

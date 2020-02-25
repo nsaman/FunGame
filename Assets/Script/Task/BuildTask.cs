@@ -22,8 +22,8 @@ public class BuildTask : Task {
     Target target;
     float buildTimer;
     float buildDistance;
+    float waitForResourcesTimer;
     BuildSiteHandler buildSiteHandler;
-    Inventory inventory;
 
     // Use this for initialization
     public override void Start () {
@@ -32,8 +32,16 @@ public class BuildTask : Task {
         target = GetComponent<Target>();
         currentStep = BuildStep.Idle;
         buildTimer = 0;
+        waitForResourcesTimer = 0;
         buildSiteHandler = buildTarget.GetComponent<BuildSiteHandler>();
-        inventory = gameObject.GetComponent<Inventory>();
+        equipBestForTask(Tags.BuildSite);
+    }
+
+    void OnEnable()
+    {
+        completingTask = false;
+        buildTimer = 0;
+        waitForResourcesTimer = 0;
     }
 
     // Update is called once per frame
@@ -82,7 +90,7 @@ public class BuildTask : Task {
     {
         buildTimer += Time.deltaTime;
 
-        float buildRate = 1;
+        float buildRate = 1 / (1 + getInteractionEquipedMultiplier(Tags.BuildSite));
         if (buildTimer >= buildRate)
         {
             // todo if there are gather mulitpliers, add logic for that here
@@ -103,7 +111,6 @@ public class BuildTask : Task {
                     uint finalBuildAmount = System.Math.Min(leftOverBuilt, leftOverBuild);
                     totalBuild += finalBuildAmount;
                     inventory.remove(inventoryEntry.Key.Tag, finalBuildAmount);
-                    inventory.setTotalWeight();
                     buildSiteHandler.Built[inventoryEntry.Key.Tag] += finalBuildAmount;
 
                     if(buildSiteHandler.NotifyBuild())
@@ -132,7 +139,7 @@ public class BuildTask : Task {
         // todo calculate stopping distance based on size of drop point
         if (distance <= 3)
         {
-            Inventory.transferAllOfTypes(gameObject.GetComponent<Inventory>(), target.target.root.gameObject.GetComponent<Inventory>(), Tags.Resources);
+            Inventory.transferAll(inventory, target.target.root.gameObject.GetComponent<Inventory>());
             if (completingTask)
             {
                 taskHandler.notifyTaskCompleted();
@@ -150,9 +157,10 @@ public class BuildTask : Task {
         {
             target.target = findClosestTeamOrNeutralObjectsWithTag(Tags.TownCenterDropOff);
 
-            if (target == null || Vector3.Distance(target.target.position, transform.position) <= 2)
+            if (target != null && Vector3.Distance(target.target.position, transform.position) <= 2)
             {
-                Inventory.transferAllOfTypes(inventory, target.target.root.GetComponent<Inventory>(), Tags.Resources);
+                Inventory transferInventory = target.target.root.gameObject.GetComponent<Inventory>();
+                Inventory.transferAll(inventory, transferInventory);
                 taskHandler.notifyTaskCompleted();
                 return;
             } else if (target == null)
@@ -187,13 +195,27 @@ public class BuildTask : Task {
             // I'm not sure if workers should wait for more resources or quit their task
             if (bestPlaceToGetResources == null)
             {
-                completingTask = true;
+                waitForResourcesTimer += Time.deltaTime;
+                if (waitForResourcesTimer > 30)
+                    completingTask = true;
                 return;
             }
+            waitForResourcesTimer = 0;
 
             if (Vector3.Distance(target.target.position, bestPlaceToGetResources.position) <= 2)
             {
-                Inventory.transferTypes(bestPlaceToGetResources.root.GetComponent<Inventory>(), inventory, resourcesLeftToBuild, MAX_WEIGHT);
+                Inventory transferInventory = target.target.root.gameObject.GetComponent<Inventory>();
+                Inventory.transferAll(inventory, transferInventory);
+                transferBestForTask(transferInventory, Tags.BuildSite);
+                equipBestForTask(Tags.BuildSite);
+                Item bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, Tags.BuildSite, inventory.getEmptySlots());
+                if (bestItemCanCraft != null)
+                {
+                    taskHandler.pushTask(Tasks.CraftingTask);
+                    GetComponent<CraftingTask>().BuildItem = bestItemCanCraft;
+                    return;
+                }
+                Inventory.transferTypes(bestPlaceToGetResources.root.GetComponent<Inventory>(), inventory, resourcesLeftToBuild, (uint)(MAX_WEIGHT - inventory.weight));
             } else
             {
                 target.target = bestPlaceToGetResources;
@@ -201,7 +223,6 @@ public class BuildTask : Task {
                 currentStep = BuildStep.ReturningToResources;
             }
         }
-
     }
 
     override public void completeTask()
@@ -223,8 +244,7 @@ public class BuildTask : Task {
 
         return false;
     }
-
-    // todo create a public gathering enum
+    
     enum BuildStep
     {
         Building,

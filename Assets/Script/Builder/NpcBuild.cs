@@ -6,7 +6,7 @@ public class NpcBuild : Build {
     public NpcBuild() : base()
     {
         cost = new Dictionary<string, uint>();
-        cost.Add(Tags.Food, 2);
+        cost.Add(Tags.Food, 5);
         buildTime = 2f;
     }
 

@@ -34,6 +34,9 @@ public class TaskHandler : MonoBehaviour {
             case Tasks.BerryGathering:
                 this.nextTask = GetComponent<BerryGatheringTask>();
                 break;
+            case Tasks.CraftingTask:
+                this.nextTask = GetComponent<CraftingTask>();
+                break;
             case Tasks.Idle:
                 this.nextTask = GetComponent<IdleTask>();
                 break;
@@ -46,6 +49,38 @@ public class TaskHandler : MonoBehaviour {
         }
 
         currentTask.completeTask();
+    }
+
+    public void pushTask(Tasks task)
+    {
+        Task pendingTask = null;
+        switch (task)
+        {
+            case Tasks.BuildTask:
+                pendingTask = GetComponent<BuildTask>();
+                break;
+            case Tasks.BerryGathering:
+                pendingTask = GetComponent<BerryGatheringTask>();
+                break;
+            case Tasks.CraftingTask:
+                pendingTask = GetComponent<CraftingTask>();
+                break;
+            case Tasks.Idle:
+                pendingTask = GetComponent<IdleTask>();
+                break;
+            case Tasks.WoodGathering:
+                pendingTask = GetComponent<WoodGatheringTask>();
+                break;
+        }
+        
+        if (pendingTask != null)
+        {
+            nextTask = currentTask;
+            nextTask.enabled = false;
+
+            currentTask = pendingTask;
+            currentTask.enabled = true;
+        }
     }
 
     public void notifyTaskCompleted()
