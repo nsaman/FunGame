@@ -54,6 +54,8 @@ public class AI {
                     BuildSiteHandler buildSiteHandler = buildSite.GetComponent<BuildSiteHandler>();
                     buildSiteHandler.BuildPlan = Builds.House;
 
+                    buildSite.GetComponent<TeamPointer>().TeamController = teamController;
+
                     foreach (TeamPointer npcTeamPointer in teamController.Registry[Tags.Npc])
                     {
                         TaskHandler taskHandler = npcTeamPointer.transform.root.GetComponent<TaskHandler>();
@@ -74,8 +76,8 @@ public class AI {
 
     public static Vector3 findClosestConstructionSite(float maxDistance, float horizontalSpacing, float searchGranularity, Vector3 startingBuildLocation, Vector3 buildSize, Quaternion rotation)
     {
-        float maxX = maxDistance + startingBuildLocation.x;
-        float maxZ = maxDistance + startingBuildLocation.z;
+        float maxX = maxDistance;
+        float maxZ = maxDistance;
 
         return findClosestConstructionSite(maxX, maxZ, horizontalSpacing, searchGranularity, startingBuildLocation, buildSize, rotation);
     }
@@ -92,8 +94,8 @@ public class AI {
         bool movePositive = true;
 
         // probably should do logic on a circle instead of a square
-        while (currentBuildLocation.x < (maxX - buildSize.x) && currentBuildLocation.x > (-maxX + buildSize.x)
-            && currentBuildLocation.y < (maxZ - buildSize.y) && currentBuildLocation.y > (-maxZ + buildSize.y))
+        while (currentBuildLocation.x < (startingBuildLocation.x + maxX - buildSize.x) && currentBuildLocation.x > (startingBuildLocation.x - maxX + buildSize.x)
+            && currentBuildLocation.z < (startingBuildLocation.z + maxZ - buildSize.z) && currentBuildLocation.z > (startingBuildLocation.z - maxZ + buildSize.z))
         {
             Collider[] collisions = Physics.OverlapBox(currentBuildLocation, buildSizeWithSpacing, rotation);
 

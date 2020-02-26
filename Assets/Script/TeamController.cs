@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public class TeamController {
 
-    public int team = 0;
+    public uint team = 0;
     public Color32 teamColor;
     private AI ai;
     public AI AI

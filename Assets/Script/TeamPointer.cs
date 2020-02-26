@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 public class TeamPointer : MonoBehaviour {
 
+    public uint team = 0;
+
     private TeamController teamController;
     public TeamController TeamController
     {
@@ -25,6 +27,8 @@ public class TeamPointer : MonoBehaviour {
 
             foreach (MeshRenderer meshRenderer in meshRenders)
                 meshRenderer.material.color = value.teamColor;
+
+            team = value.team;
         }
     }
 
@@ -32,7 +36,10 @@ public class TeamPointer : MonoBehaviour {
 	void Start ()
     {
        TeamsController teamsController = GameObject.FindWithTag(Tags.Teams).GetComponent<TeamsController>();
-       TeamController = teamsController.getDefaultTeam();
+        if (team == 0)
+            TeamController = teamsController.getDefaultTeam();
+        else
+            TeamController = teamsController.getOrCreateTeamByTeamNumber(team);
     }
 	
 	// Update is called once per frame

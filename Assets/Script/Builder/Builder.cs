@@ -65,9 +65,12 @@ public abstract class Builder : MonoBehaviour {
             // build and check completeness
             if (activeQueue[0].continueBuild())
             {
-                activeQueue[0].handleComplete(spawnPosition);
+                TeamPointer teamPointer = GetComponent<TeamPointer>();
+
+                activeQueue[0].handleComplete(spawnPosition, teamPointer == null ? null : teamPointer.TeamController);
                 activeQueue.RemoveAt(0);
-                tryPromoteQueued();
+                if (activeQueue.Count == 0)
+                    tryPromoteQueued();
             }
         }
         else

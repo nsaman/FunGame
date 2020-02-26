@@ -3,33 +3,55 @@ using System.Collections.Generic;
 
 public class TeamsController : MonoBehaviour {
 
-    List<TeamController> teams;
+    Dictionary<uint, TeamController> teams;
+    uint highestTeam=0;
 
-	// Use this for initialization
-	void Awake () {
-        teams = new List<TeamController>();
+    // Use this for initialization
+    void Awake () {
+        teams = new Dictionary<uint, TeamController>();
     }
 	
 	// Update is called once per frame
 	void Update () {
-	    foreach(TeamController team in teams)
+	    foreach(KeyValuePair<uint, TeamController> team in teams)
         {
-            team.AI.handleTeam();
+            team.Value.AI.handleTeam();
         }
 	}
 
     public TeamController createTeam()
     {
        Color teamColor = new Color(Random.value, Random.value, Random.value, 0);
-        return createTeam(teamColor);
+       return createTeam(teamColor, 0);
     }
 
-    public TeamController createTeam(Color color)
+    public TeamController createTeam(uint teamNumber)
     {
+        Color teamColor = new Color(Random.value, Random.value, Random.value, 0);
+        return createTeam(teamColor, teamNumber);
+    }
+
+    public TeamController createTeam(Color color, uint teamNumber)
+    {
+        if (teams.ContainsKey(teamNumber))
+            return teams[teamNumber];
+
         TeamController tc = new TeamController();
-        tc.team = teams.Count;
         tc.teamColor = color;
-        teams.Add(tc);
+        if(teamNumber == 0)
+        {
+            highestTeam++;
+            tc.team = highestTeam;
+            teams.Add(++highestTeam, tc);
+        }
+        else
+        {
+            tc.team = teamNumber;
+            teams.Add(teamNumber, tc);
+
+            if (teamNumber > highestTeam)
+                highestTeam = teamNumber;
+        }
 
         return tc;
     }
@@ -41,11 +63,11 @@ public class TeamsController : MonoBehaviour {
         return teams[0];
     }
 
-    public TeamController getTeamByIndex(int index)
+    public TeamController getOrCreateTeamByTeamNumber(uint teamNumber)
     {
-        if (index + 1 > teams.Count)
-            return teams[index];
+        if (teams.ContainsKey(teamNumber))
+            return teams[teamNumber];
         else
-            return null;
+            return createTeam(teamNumber);
     }
 }
