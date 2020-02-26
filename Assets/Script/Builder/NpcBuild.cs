@@ -6,12 +6,16 @@ public class NpcBuild : Build {
     public NpcBuild() : base()
     {
         cost = new Dictionary<string, uint>();
-        cost.Add(Tags.Food, 5);
+        cost.Add(Tags.Food, 10);
         buildTime = 2f;
     }
 
-    public override void handleComplete(Vector3 position)
+    public override void handleComplete(Vector3 position, TeamController teamController)
     {
-        Object.Instantiate(Resources.Load("Prefab/" + Tags.Npc), position, new Quaternion());
+        GameObject gameObject = (GameObject)Object.Instantiate(Resources.Load("Prefab/" + Tags.Npc), position, new Quaternion());
+
+        TeamPointer teamPointer = gameObject.GetComponent<TeamPointer>();
+        if (teamPointer != null)
+            teamPointer.TeamController = teamController;
     }
 }

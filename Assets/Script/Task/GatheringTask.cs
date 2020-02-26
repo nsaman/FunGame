@@ -152,7 +152,7 @@ public abstract class GatheringTask : Task
 
         if (inventory.getTotalCountByTypes(Tags.Resources) == 0)
         {
-            target.target = findClosestByTag(targetTag);
+            target.target = findClosestTeamOrNeutralObjectsWithTag(targetTag);
             GetComponent<NavMeshAgent>().enabled = true;
             if (target.target != null)
             {

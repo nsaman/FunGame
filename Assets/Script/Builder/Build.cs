@@ -38,5 +38,5 @@ public abstract class Build
         return false;
     }
 
-    public abstract void handleComplete(Vector3 position);
+    public abstract void handleComplete(Vector3 position, TeamController teamController);
 }
