@@ -24,11 +24,11 @@ public abstract class Task : MonoBehaviour
 
     protected void dontMove()
     {
-        GetComponent<NavMeshAgent>().enabled = false;
+        GetComponent<UnityEngine.AI.NavMeshAgent>().isStopped = true;
     }
     protected void move()
     {
-        GetComponent<NavMeshAgent>().enabled = true;
+        GetComponent<UnityEngine.AI.NavMeshAgent>().isStopped = false;
     }
 
     protected Transform findClosestByTag(string tag)
