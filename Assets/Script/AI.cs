@@ -43,7 +43,7 @@ public class AI {
                 // start box away from tc
                 Vector3 currentBuildLocation = teamPointer.transform.root.position;
 
-                Vector3 closestConstructionSite = findClosestConstructionSite(50, 2f, 2f, currentBuildLocation, buildSize, tcQuaternion);
+                Vector3 closestConstructionSite = findClosestConstructionSite(80, 2f, 2f, currentBuildLocation, buildSize, tcQuaternion);
                 if (closestConstructionSite != NOT_FOUND)
                 {
                     Vector3 finalBuildSize = buildSize;
@@ -86,7 +86,7 @@ public class AI {
     {
         // assume startingBuildLocation is on the ground
         Vector3 currentBuildLocation = startingBuildLocation + new Vector3(0, buildSize.y, 0);
-        Vector3 buildSizeWithSpacing = buildSize + new Vector3(horizontalSpacing, 0, horizontalSpacing);
+        Vector3 buildSizeWithSpacing = buildSize + new Vector3(horizontalSpacing, .01f, horizontalSpacing);
 
         int advanceAmount = 1;
         int currentAdvanced = 0;

@@ -95,6 +95,7 @@ public abstract class GatheringTask : Task
 
     void GatheringUpdate()
     {
+        dontMove();
         if (inventory.weight >= MAX_WEIGHT)
             currentStep = GatheringStep.Idle;
 
@@ -153,7 +154,7 @@ public abstract class GatheringTask : Task
         if (inventory.getTotalCountByTypes(Tags.Resources) == 0)
         {
             target.target = findClosestTeamOrNeutralObjectsWithTag(targetTag);
-            GetComponent<NavMeshAgent>().enabled = true;
+            move();
             if (target.target != null)
             {
                 currentStep = GatheringStep.MovingToResource;
@@ -179,7 +180,7 @@ public abstract class GatheringTask : Task
         else
         {
             target.target = findClosestTeamOrNeutralObjectsWithTags(new string[] { targetTag, Tags.TownCenterDropOff });
-            GetComponent<NavMeshAgent>().enabled = true;
+            move();
             if (target.target.gameObject.name.Equals(targetTag))
             {
                 currentStep = GatheringStep.MovingToResource;
@@ -194,7 +195,7 @@ public abstract class GatheringTask : Task
     private void dropOffTownCenter()
     {
         target.target = findClosestTeamOrNeutralObjectsWithTag(Tags.TownCenterDropOff);
-        GetComponent<NavMeshAgent>().enabled = true;
+        move();
         if (target.target != null)
             currentStep = GatheringStep.DroppingOffResources;
     }
