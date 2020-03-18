@@ -23,7 +23,10 @@ public static class Tags
     public static string[] EquipableOffHands = new string[] {  };
     public static string[] EquipableLegs = new string[] {  };
     public static string[] EquipableFeets = new string[] {  };
+    public static string[] Moves = new string[] { Tags.Npc };
     public static string[] Teamed = new string[] { Tags.Npc, Tags.TownCenter, BuildSite, House };
     public static string[] Resources = new string[] { Tags.Wood, Tags.Food };
+    public static string[] Weapons = new string[] { };
+
     public static string[] Equipables = EquipableHeads.Union(EquipableChests).Union(EquipableMainHands).Union(EquipableOffHands).Union(EquipableLegs).Union(EquipableFeets).ToArray();
 }

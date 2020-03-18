@@ -5,7 +5,7 @@ public static class Builds
 {
     public static BuildPlan House { get {
             Dictionary<string, uint> cost = new Dictionary<string, uint>();
-            cost.Add(Tags.Wood, 20);
+            cost.Add(Tags.Wood, 1);
             return new BuildPlan(Tags.House, new Vector3(2.5f, 2.5f, 2.5f), cost); } }
 
     
