@@ -16,6 +16,21 @@ public class EquipInventory : Inventory
     GameObject legsGameObject;
     EquipableItem feet;
     GameObject feetGameObject;
+    Observes observes;
+    protected new void Start()
+    {
+        base.Start();
+
+        observes = transform.root.GetComponent<Observes>();
+    }
+
+    protected new void Update()
+    {
+        base.Update();
+
+        /*if (observes != null && headGameObject != null)
+            headGameObject.transform.localRotation = Quaternion.AngleAxis(observes.LookAngle, Vector3.up);*/
+    }
 
     protected new void Awake()
     {

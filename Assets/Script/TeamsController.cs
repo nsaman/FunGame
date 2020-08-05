@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 public class TeamsController : MonoBehaviour {
 
@@ -42,7 +43,7 @@ public class TeamsController : MonoBehaviour {
         {
             highestTeam++;
             tc.team = highestTeam;
-            teams.Add(++highestTeam, tc);
+            teams.Add(highestTeam, tc);
         }
         else
         {
@@ -60,7 +61,7 @@ public class TeamsController : MonoBehaviour {
     {
         if (teams.Count == 0)
             createTeam();
-        return teams[0];
+        return teams.Values.ToList()[0];
     }
 
     public TeamController getOrCreateTeamByTeamNumber(uint teamNumber)

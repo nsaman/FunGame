@@ -13,17 +13,23 @@ public static class Tags
     public static string Npc { get { return "Npc"; } }
     public static string Stick { get { return "Stick"; } }
     public static string Teams { get { return "Teams"; } }
+    public static string Tree { get { return "Tree"; } }
     public static string TownCenter { get { return "TownCenter"; } }
     public static string TownCenterDropOff { get { return "TownCenterDropOff"; } }
+    public static string Untagged { get { return "Untagged"; } }
     public static string Wood { get { return "Wood"; } }
 
+    public static string[] DontRemember = new string[] { Tags.Untagged, Tags.Ground };
     public static string[] EquipableHeads = new string[] { Tags.Hat };
     public static string[] EquipableChests = new string[] {  };
     public static string[] EquipableMainHands = new string[] { Tags.Stick, Tags.Hammer, Tags.Basket };
     public static string[] EquipableOffHands = new string[] {  };
     public static string[] EquipableLegs = new string[] {  };
     public static string[] EquipableFeets = new string[] {  };
+    public static string[] Moves = new string[] { Tags.Npc };
     public static string[] Teamed = new string[] { Tags.Npc, Tags.TownCenter, BuildSite, House };
     public static string[] Resources = new string[] { Tags.Wood, Tags.Food };
+    public static string[] Weapons = new string[] { };
+
     public static string[] Equipables = EquipableHeads.Union(EquipableChests).Union(EquipableMainHands).Union(EquipableOffHands).Union(EquipableLegs).Union(EquipableFeets).ToArray();
 }

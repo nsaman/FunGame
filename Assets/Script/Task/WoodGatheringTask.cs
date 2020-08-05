@@ -1,12 +1,9 @@
-﻿using UnityEngine;
-using System.Collections.Generic;
-
-public class WoodGatheringTask : GatheringTask
+﻿public class WoodGatheringTask : GatheringTask
 {
     // Use this for initialization
     public override void Start()
     {
-        targetTag = Tags.Wood;
+        targetTag = Tags.Tree;
         base.Start();
     }
 

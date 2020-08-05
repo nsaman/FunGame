@@ -8,12 +8,14 @@ public class Inventory : MonoBehaviour {
 
     public float weight;
 
-	// Use this for initialization
 	protected void Awake() {
 		inventory = new Dictionary<string, Dictionary<Item,uint>>();
 	}
 
-    // Update is called once per frame
+    protected void Start()
+    {
+    }
+
     protected void Update () {
     }
 
@@ -179,12 +181,14 @@ public class Inventory : MonoBehaviour {
         transferType(sendingInventory, receivingInventory, type, sendingInventory.getTotalCountByType(type));
     }
 
-    public static void transferTypes(Inventory sendingInventory, Inventory receivingInventory, ICollection<string> types, uint count)
+    public static uint transferTypes(Inventory sendingInventory, Inventory receivingInventory, ICollection<string> types, uint count)
     {
         uint leftToTransfer = count;
 
         foreach (string type in types)
             leftToTransfer -= transferType(sendingInventory, receivingInventory, type, leftToTransfer);
+
+        return count - leftToTransfer;
     }
 
     public static uint transferType(Inventory sendingInventory, Inventory receivingInventory, string type, uint count)

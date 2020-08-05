@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
-public class BuildTask : Task {
+public class BuildTask : TargettedTask
+{
 
     GameObject buildTarget;
     public GameObject BuildTarget
@@ -19,7 +20,6 @@ public class BuildTask : Task {
     }
 
     BuildStep currentStep;
-    Target target;
     float buildTimer;
     float buildDistance;
     float waitForResourcesTimer;
@@ -29,7 +29,6 @@ public class BuildTask : Task {
     public override void Start () {
         base.Start();
 
-        target = GetComponent<Target>();
         currentStep = BuildStep.Idle;
         buildTimer = 0;
         waitForResourcesTimer = 0;
@@ -47,11 +46,12 @@ public class BuildTask : Task {
     // Update is called once per frame
     protected override void Update ()
     {
-        if (target.target == null)
+        if (target.TargetMemory == null)
             currentStep = BuildStep.Idle;
 
         if (buildTarget == null && !completingTask)
         {
+            // this is kind of cheating but it should be fine
             completingTask = true;
             currentStep = BuildStep.Idle;
         }
@@ -80,9 +80,7 @@ public class BuildTask : Task {
 
     private void MovingToBuildUpdate()
     {
-        float distanceToResource = Vector3.Distance(target.target.position, transform.position);
-        
-        if (distanceToResource <= buildDistance)
+        if (withinDistanceOfTarget(buildDistance))
             currentStep = BuildStep.Idle;
     }
 
@@ -115,6 +113,7 @@ public class BuildTask : Task {
 
                     if(buildSiteHandler.NotifyBuild())
                     {
+                        remembers.Forget(buildTarget);
                         completingTask = true;
                         currentStep = BuildStep.Idle;
                         return;
@@ -134,12 +133,10 @@ public class BuildTask : Task {
 
     private void ReturningToResourcesUpdate()
     {
-        float distance = Vector3.Distance(target.target.position, transform.position);
-
         // todo calculate stopping distance based on size of drop point
-        if (distance <= 3)
+        if (withinDistanceOfTarget(3))
         {
-            Inventory.transferAll(inventory, target.target.root.gameObject.GetComponent<Inventory>());
+            Inventory.transferAll(inventory, target.target.transform.root.gameObject.GetComponent<Inventory>());
             if (completingTask)
             {
                 taskHandler.notifyTaskCompleted();
@@ -155,15 +152,16 @@ public class BuildTask : Task {
         // if completing task, try to drop off first
         if (completingTask)
         {
-            target.target = findClosestTeamOrNeutralObjectsWithTag(Tags.TownCenterDropOff);
+            if(target.TargetMemory == null || !target.TargetMemory.Tag.Equals(Tags.TownCenter))
+                target.TargetMemory = findClosestTeamOrNeutralMemoriesWithTag(Tags.TownCenter);
 
-            if (target != null && Vector3.Distance(target.target.position, transform.position) <= 2)
+            if (target.TargetMemory != null && withinDistanceOfTarget(2))
             {
-                Inventory transferInventory = target.target.root.gameObject.GetComponent<Inventory>();
+                Inventory transferInventory = target.target.transform.root.gameObject.GetComponent<Inventory>();
                 Inventory.transferAll(inventory, transferInventory);
                 taskHandler.notifyTaskCompleted();
                 return;
-            } else if (target == null)
+            } else if (target.TargetMemory == null)
             {
                 taskHandler.notifyTaskCompleted();
                 return;
@@ -175,36 +173,23 @@ public class BuildTask : Task {
         }
 
         bool hasResourcesToBuild = hasBuildResources();
-        if (hasResourcesToBuild && Vector3.Distance(buildTarget.transform.position, transform.position) <= buildDistance)
+        if (hasResourcesToBuild && target.target == buildTarget && withinDistanceOfTarget(buildDistance))
         {
             currentStep = BuildStep.Building;
         } else if (hasResourcesToBuild)
         {
-            target.target = buildTarget.transform;
+            target.TargetMemory = remembers.FindMemoryByGameObject(buildTarget);
             move();
             currentStep = BuildStep.MovingToBuild;
         } else
         {
-            HashSet<GameObject> resoucePoints = getTeamOrNeutralObjectsWithTag(Tags.TownCenterDropOff);
+            if(target.TargetMemory == null || !target.TargetMemory.Tag.Equals(Tags.TownCenter))
+                target.TargetMemory = findClosestTeamOrNeutralMemoriesWithTag(Tags.TownCenter);
+
             ICollection<string> resourcesLeftToBuild = buildSiteHandler.resourcesLeftToBuild();
-
-            resoucePoints.RemoveWhere(rp => !rp.transform.root.GetComponent<Inventory>().containsAny(resourcesLeftToBuild));
-
-            Transform bestPlaceToGetResources = findClosest(resoucePoints);
-
-            // I'm not sure if workers should wait for more resources or quit their task
-            if (bestPlaceToGetResources == null)
+            if (withinDistanceOfTarget(3))
             {
-                waitForResourcesTimer += Time.deltaTime;
-                if (waitForResourcesTimer > 30)
-                    completingTask = true;
-                return;
-            }
-            waitForResourcesTimer = 0;
-
-            if (Vector3.Distance(target.target.position, bestPlaceToGetResources.position) <= 2)
-            {
-                Inventory transferInventory = target.target.root.gameObject.GetComponent<Inventory>();
+                Inventory transferInventory = target.target.transform.root.gameObject.GetComponent<Inventory>();
                 Inventory.transferAll(inventory, transferInventory);
                 transferBestForTask(transferInventory, Tags.BuildSite);
                 equipBestForTask(Tags.BuildSite);
@@ -215,10 +200,19 @@ public class BuildTask : Task {
                     GetComponent<CraftingTask>().BuildItem = bestItemCanCraft;
                     return;
                 }
-                Inventory.transferTypes(bestPlaceToGetResources.root.GetComponent<Inventory>(), inventory, resourcesLeftToBuild, (uint)(MAX_WEIGHT - inventory.weight));
+                uint transferred = Inventory.transferTypes(transferInventory, inventory, resourcesLeftToBuild, (uint)(MAX_WEIGHT - inventory.weight));
+
+                if (transferred != 0)
+                    waitForResourcesTimer = 0;
+                else
+                {
+                    waitForResourcesTimer += Time.deltaTime;
+                    if (waitForResourcesTimer > 30)
+                        completingTask = true;
+                    return;
+                }
             } else
             {
-                target.target = bestPlaceToGetResources;
                 move();
                 currentStep = BuildStep.ReturningToResources;
             }
