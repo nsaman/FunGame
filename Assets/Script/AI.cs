@@ -61,8 +61,9 @@ public class AI {
                         TaskHandler taskHandler = npcTeamPointer.transform.root.GetComponent<TaskHandler>();
                         if (!(taskHandler.CurrentTask is BuildTask))
                         {
-                            taskHandler.setTask(Tasks.BuildTask);
                             npcTeamPointer.transform.root.GetComponent<BuildTask>().BuildTarget = buildSite;
+                            npcTeamPointer.transform.root.GetComponent<Remembers>().Remember(buildSite);
+                            taskHandler.setTask(Tasks.BuildTask);
                             break;
                         }
                     }

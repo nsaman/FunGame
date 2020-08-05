@@ -15,7 +15,9 @@ public class TaskHandler : MonoBehaviour {
 
     // Use this for initialization
     void Start () {
-        currentTask = GetComponent<IdleTask>();
+        foreach (Task component in GetComponents<Task>())
+            if(component.enabled)
+                currentTask = component;
     }
 	
 	// Update is called once per frame

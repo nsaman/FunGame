@@ -1,11 +1,9 @@
 ﻿using UnityEngine;
 
-public abstract class GatheringTask : Task
+public abstract class GatheringTask : TargettedTask
 {
-    // todo create parent class for handling job transitions, tracking skills, and registering target
 
     GatheringStep currentStep;
-    Target target;
     float gatherTimer;
     bool waitForMoreResourcesAtTownCenter;
     protected string targetTag;
@@ -15,9 +13,6 @@ public abstract class GatheringTask : Task
     {
         base.Start();
 
-        // todo check which state to intialize to
-
-        target = GetComponent<Target>();
         currentStep = GatheringStep.Idle;
         gatherTimer = 0;
         waitForMoreResourcesAtTownCenter = false;
@@ -27,7 +22,8 @@ public abstract class GatheringTask : Task
     void OnEnable()
     {
         completingTask = false;
-        float distanceDropOff = Vector3.Distance(target.target.position, transform.position);
+        currentStep = GatheringStep.Idle;
+        /*float distanceDropOff = Vector3.Distance(target.target.position, transform.position);
 
         // todo calculate stopping distance based on size of drop point
         if (distanceDropOff <= 3)
@@ -40,16 +36,16 @@ public abstract class GatheringTask : Task
             if (bestItemCanCraft != null)
             {
                 taskHandler.pushTask(Tasks.CraftingTask);
-                GetComponent<CraftingTask>().BuildItem = bestItemCanCraft;
+                GetComponent<CraftingTask>().BuildItem = bestItemCanCraft; 
             }
             currentStep = GatheringStep.Idle;
-        }
+        }*/
     }
 
     // Update is called once per frame
     protected override void Update()
     {
-        if (target.target == null)
+        if (target.TargetMemory == null)
             currentStep = GatheringStep.Idle;
 
         switch (currentStep)
@@ -78,7 +74,7 @@ public abstract class GatheringTask : Task
     {
         completingTask = true;
         dropOffTownCenter();
-        if (target.target == null)
+        if (target.TargetMemory == null)
         {
             taskHandler.notifyTaskCompleted();
         }
@@ -86,20 +82,20 @@ public abstract class GatheringTask : Task
 
     void MovingToResourceUpdate()
     {
-        float distanceToResource = Vector3.Distance(target.target.position, transform.position);
-
         // todo calculate stopping distance based on size of resource
-        if (distanceToResource < 2)
+        if (withinDistanceOfTarget(2))
             currentStep = GatheringStep.Gathering;
     }
 
     void GatheringUpdate()
     {
         dontMove();
-        if (inventory.weight >= MAX_WEIGHT)
+        if (target.target == null || inventory.weight >= MAX_WEIGHT)
+        {
             currentStep = GatheringStep.Idle;
+            return;
+        }
 
-        // todo add gathering rate impact by tools/skill
         float gatherRate = 1 / (1 + getInteractionEquipedMultiplier(targetTag));
         gatherTimer += Time.deltaTime;
         if (gatherTimer >= gatherRate)
@@ -108,14 +104,15 @@ public abstract class GatheringTask : Task
             uint totalGather = System.Convert.ToUInt32(gatherTimer / gatherRate);
             gatherTimer -= totalGather * gatherRate;
 
-            Inventory targetInventory = target.target.root.GetComponent<Inventory>();
+            Inventory targetInventory = target.target.transform.root.GetComponent<Inventory>();
             uint realGatherAmount = System.Math.Min(targetInventory.getTotalCountByTypes(Tags.Resources), totalGather);
 
             Inventory.transferTypes(targetInventory, inventory, Tags.Resources, realGatherAmount);
 
             if (targetInventory.getTotalCountByTypes(Tags.Resources) <= 0)
             {
-                Destroy(target.target.root.gameObject);
+                Destroy(target.target.transform.root.gameObject);
+                remembers.Forget(target.TargetMemory);
                 currentStep = GatheringStep.Idle;
             }
         }
@@ -123,12 +120,10 @@ public abstract class GatheringTask : Task
 
     void DroppingOffResourcesUpdate()
     {
-        float distanceDropOff = Vector3.Distance(target.target.position, transform.position);
-
         // todo calculate stopping distance based on size of drop point
-        if (distanceDropOff <= 3)
+        if (withinDistanceOfTarget(3))
         {
-            Inventory transferInventory = target.target.root.gameObject.GetComponent<Inventory>();
+            Inventory transferInventory = target.target.transform.root.gameObject.GetComponent<Inventory>();
             Inventory.transferAll(inventory, transferInventory);
             if (completingTask)
             {
@@ -138,7 +133,7 @@ public abstract class GatheringTask : Task
             transferBestForTask(transferInventory, targetTag);
             equipBestForTask(targetTag);
             Item bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, targetTag, inventory.getEmptySlots());
-            if(bestItemCanCraft != null)
+            if (bestItemCanCraft != null)
             {
                 taskHandler.pushTask(Tasks.CraftingTask);
                 GetComponent<CraftingTask>().BuildItem = bestItemCanCraft;
@@ -151,12 +146,19 @@ public abstract class GatheringTask : Task
     {
         dontMove();
 
-        if (inventory.getTotalCountByTypes(Tags.Resources) == 0)
+        // drop off if inventory is full
+        if (inventory.weight >= MAX_WEIGHT)
         {
-            target.target = findClosestTeamOrNeutralObjectsWithTag(targetTag);
-            move();
-            if (target.target != null)
+            dropOffTownCenter();
+        }
+        // no resources in inventory
+        else if(inventory.getTotalCountByTypes(Tags.Resources) == 0)
+        {
+            MemoryEntry closestMemory = findClosestTeamOrNeutralMemoriesWithTag(targetTag);
+            if (closestMemory != null)
             {
+                move();
+                target.TargetMemory = closestMemory;
                 currentStep = GatheringStep.MovingToResource;
             }
             // no resource to gather
@@ -164,39 +166,35 @@ public abstract class GatheringTask : Task
             {
                 if (!waitForMoreResourcesAtTownCenter)
                 {
-                    dropOffTownCenter();
-                    // if we are too close to the TC, just idle
-                    if (target.target == null || Vector3.Distance(target.target.position, transform.position) < 3)
-                    {
-                        taskHandler.setTask(Tasks.Idle);
-                    }
+                    completeTask();
                 }
             }
         }
-        else if (inventory.weight >= MAX_WEIGHT)
-        {
-            dropOffTownCenter();
-        }
+        // partial inventory, either drop off or gather based on what's closer
         else
         {
-            target.target = findClosestTeamOrNeutralObjectsWithTags(new string[] { targetTag, Tags.TownCenterDropOff });
-            move();
-            if (target.target.gameObject.name.Equals(targetTag))
+            MemoryEntry closestMemory = findClosestTeamOrNeutralMemoriesWithTags(new string[] { targetTag, Tags.TownCenter });
+            if (closestMemory != null)
             {
-                currentStep = GatheringStep.MovingToResource;
-            }
-            else
-            {
-                currentStep = GatheringStep.DroppingOffResources;
+                move();
+                target.TargetMemory = closestMemory;
+                if (target.TargetMemory.Tag.Equals(targetTag))
+                {
+                    currentStep = GatheringStep.MovingToResource;
+                }
+                else
+                {
+                    currentStep = GatheringStep.DroppingOffResources;
+                }
             }
         }
     }
 
     private void dropOffTownCenter()
     {
-        target.target = findClosestTeamOrNeutralObjectsWithTag(Tags.TownCenterDropOff);
+        target.TargetMemory = findClosestTeamOrNeutralMemoriesWithTag(Tags.TownCenter);
         move();
-        if (target.target != null)
+        if (target.TargetMemory != null)
             currentStep = GatheringStep.DroppingOffResources;
     }
 

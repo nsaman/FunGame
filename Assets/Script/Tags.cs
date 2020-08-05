@@ -13,10 +13,13 @@ public static class Tags
     public static string Npc { get { return "Npc"; } }
     public static string Stick { get { return "Stick"; } }
     public static string Teams { get { return "Teams"; } }
+    public static string Tree { get { return "Tree"; } }
     public static string TownCenter { get { return "TownCenter"; } }
     public static string TownCenterDropOff { get { return "TownCenterDropOff"; } }
+    public static string Untagged { get { return "Untagged"; } }
     public static string Wood { get { return "Wood"; } }
 
+    public static string[] DontRemember = new string[] { Tags.Untagged, Tags.Ground };
     public static string[] EquipableHeads = new string[] { Tags.Hat };
     public static string[] EquipableChests = new string[] {  };
     public static string[] EquipableMainHands = new string[] { Tags.Stick, Tags.Hammer, Tags.Basket };

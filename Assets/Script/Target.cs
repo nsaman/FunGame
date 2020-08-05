@@ -1,10 +1,16 @@
 using UnityEngine;
-using System.Collections;
 
 public class Target : MonoBehaviour {
 
-	public Transform target;
-    UnityEngine.AI.NavMeshAgent agent;
+	public GameObject target;
+	private MemoryEntry targetMemory;
+	UnityEngine.AI.NavMeshAgent agent;
+
+	public MemoryEntry TargetMemory { get => targetMemory; 
+		set {
+			if (targetMemory == null || value == null || targetMemory.InstanceID != value.InstanceID)
+				target = null;
+			targetMemory = value; } }
 
 	// Use this for initialization
 	void Start () {
@@ -13,7 +19,11 @@ public class Target : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-        if (agent.isActiveAndEnabled && target != null && agent.destination != target.position)
-		    agent.SetDestination(target.position);
+		Vector3 usedPosition = targetMemory != null ? TargetMemory.Position : AI.NOT_FOUND;
+		if (target != null)
+			usedPosition = target.transform.position;
+
+		if (agent.isActiveAndEnabled && usedPosition != AI.NOT_FOUND && agent.destination != usedPosition)
+		    agent.SetDestination(usedPosition);
 	}
 }

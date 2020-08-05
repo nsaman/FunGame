@@ -8,12 +8,14 @@ public abstract class Task : MonoBehaviour
     protected TaskHandler taskHandler;
     public const uint MAX_WEIGHT = 3;
     protected EquipInventory inventory;
+    protected Remembers remembers;
 
     public virtual void Start()
     {
         completingTask = false;
         taskHandler = GetComponent<TaskHandler>();
         inventory = GetComponent<EquipInventory>();
+        remembers = GetComponent<Remembers>();
     }
 
     protected virtual void Update()
@@ -31,88 +33,82 @@ public abstract class Task : MonoBehaviour
         GetComponent<UnityEngine.AI.NavMeshAgent>().isStopped = false;
     }
 
-    protected Transform findClosestByTag(string tag)
+    protected MemoryEntry findClosestByTag(string tag)
     {
-        return findClosestByTags(new string[] { tag }, transform);
+        return findClosestByTags(new string[] { tag }, transform.position);
     }
 
-    protected Transform findClosestByTags(string[] tags)
+    protected MemoryEntry findClosestByTags(ICollection<string> tags)
     {
-        return findClosestByTags(tags, transform);
+        return findClosestByTags(tags, transform.position);
     }
 
-    public static Transform findClosestByTags(string[] tags, Transform startingTransform)
+    private MemoryEntry findClosestByTags(ICollection<string> tags, Vector3 position)
     {
 
-        HashSet<GameObject> tagObjects = new HashSet<GameObject>();
+        HashSet<MemoryEntry> memories = new HashSet<MemoryEntry>();
 
         foreach (string tag in tags)
         {
-            tagObjects.UnionWith(GameObject.FindGameObjectsWithTag(tag));
+            memories.UnionWith(remembers.FindGameMemoriesWithTag(tag));
         }
 
-        return findClosest(tagObjects, startingTransform);
+        return findClosest(memories, position);
     }
 
-    public Transform findClosest(ICollection<GameObject> tagObjects)
+    public MemoryEntry findClosest(ICollection<MemoryEntry> memories, Vector3 position)
     {
-        return Task.findClosest(tagObjects, transform);
-    }
-
-    public static Transform findClosest(ICollection<GameObject> tagObjects, Transform startingTransform)
-    {
-        Transform closest = null;
+        MemoryEntry returnMemory = null;
         float distanceToClosest = float.MaxValue;
 
-        foreach (GameObject gameobject in tagObjects)
+        foreach (MemoryEntry memory in memories)
         {
-            Transform newTransform = gameobject.GetComponent<Transform>();
-            float distanceToNew = Vector3.Distance(newTransform.position, startingTransform.position);
+            float distanceToNew = Vector3.Distance(memory.Position, position);
             if (distanceToNew < distanceToClosest)
             {
-                closest = newTransform;
+                returnMemory = memory;
                 distanceToClosest = distanceToNew;
             }
         }
 
-        return closest;
+        return returnMemory;
     }
 
-    public Transform findClosestTeamOrNeutralObjectsWithTag(string tag)
+    public MemoryEntry findClosestTeamOrNeutralMemoriesWithTag(string tag)
     {
-        return (findClosest(getTeamOrNeutralObjectsWithTags(new string[] { tag }), transform));
+        return findClosest(getTeamOrNeutralMemoriesWithTags(new string[] { tag }), transform.position);
     }
 
-    public Transform findClosestTeamOrNeutralObjectsWithTags(string[] tags)
+    public MemoryEntry findClosestTeamOrNeutralMemoriesWithTags(string[] tags)
     {
-        return (findClosest(getTeamOrNeutralObjectsWithTags(tags), transform));
+        return findClosest(getTeamOrNeutralMemoriesWithTags(tags), transform.position);
     }
 
-    public HashSet<GameObject> getTeamOrNeutralObjectsWithTags(string[] tags)
+    public HashSet<MemoryEntry> getTeamOrNeutralMemoriesWithTags(string[] tags)
     {
-        HashSet<GameObject> returnObjects = new HashSet<GameObject>();
+        HashSet<MemoryEntry> returnMemories = new HashSet<MemoryEntry>();
 
         foreach (string tag in tags)
-            returnObjects.UnionWith(getTeamOrNeutralObjectsWithTag(tag));
+            returnMemories.UnionWith(getTeamOrNeutralMemoriesWithTag(tag));
 
-        return returnObjects;
+        return returnMemories;
     }
 
-    public HashSet<GameObject> getTeamOrNeutralObjectsWithTag(string tag)
+    public HashSet<MemoryEntry> getTeamOrNeutralMemoriesWithTag(string tag)
     {
-        HashSet<GameObject> returnObjects = new HashSet<GameObject>();
+        HashSet<MemoryEntry> returnMemories = new HashSet<MemoryEntry>();
 
-        GameObject[] tagObjects = GameObject.FindGameObjectsWithTag(tag);
+        ICollection<MemoryEntry> memories = remembers.FindGameMemoriesWithTag(tag);
         
-        foreach(GameObject taggedObject in tagObjects)
+        foreach(MemoryEntry memory in memories)
         {
-            if (taggedObject.transform.root.GetComponent<TeamPointer>() == null)
-                returnObjects.Add(taggedObject);
-            else if (taggedObject.transform.root.GetComponent<TeamPointer>().TeamController == gameObject.transform.root.GetComponent<TeamPointer>().TeamController)
-                returnObjects.Add(taggedObject);
+            if (memory.Team == null)
+                returnMemories.Add(memory);
+            else if (memory.Team == gameObject.transform.root.GetComponent<TeamPointer>().TeamController)
+                returnMemories.Add(memory);
         }
 
-        return returnObjects;
+        return returnMemories;
     }
 
     protected void transferBestForTask(Inventory sendingInvetory, string targetTag)

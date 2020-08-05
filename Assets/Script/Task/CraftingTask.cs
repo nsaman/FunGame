@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
-public class CraftingTask : Task
+public class CraftingTask : TargettedTask
 {
     Dictionary<string, uint> leftToBuild = new Dictionary<string, uint>();
     CraftingStep currentStep;
-    Target target;
     float buildTimer;
 
     Item buildItem;
@@ -25,8 +24,8 @@ public class CraftingTask : Task
     public override void Start()
     {
         base.Start();
-        
-        target = GetComponent<Target>();
+
+        currentStep = CraftingStep.Idle;
         completingTask = false;
     }
 
@@ -37,7 +36,7 @@ public class CraftingTask : Task
 
     protected override void Update()
     {
-        if (target.target == null)
+        if (target.TargetMemory == null)
             currentStep = CraftingStep.Idle;
 
         switch (currentStep)
@@ -45,8 +44,8 @@ public class CraftingTask : Task
             case CraftingStep.MovingToResources:
                 MovingToResourcesUpdate();
                 break;
-            case CraftingStep.Building:
-                BuildingUpdate();
+            case CraftingStep.Crafting:
+                CraftingUpdate();
                 break;
             case CraftingStep.Idle:
                 IdleUpdate();
@@ -61,29 +60,34 @@ public class CraftingTask : Task
 
     private void MovingToResourcesUpdate()
     {
-        float distance = Vector3.Distance(target.target.position, transform.position);
-
         // todo calculate stopping distance based on size of drop point
-        if (distance <= 3)
+        if (withinDistanceOfTarget(3))
         {
-            Inventory.transferAllOfTypes(inventory, target.target.root.gameObject.GetComponent<Inventory>(), Tags.Resources);
+            Inventory targetInventory = target.target.transform.root.gameObject.GetComponent<Inventory>();
+            Inventory.transferAllOfTypes(inventory, targetInventory, Tags.Resources);
             if (completingTask)
             {
                 taskHandler.notifyTaskCompleted();
                 return;
             }
-            currentStep = CraftingStep.Idle;
+            if (targetInventory.containsAny(leftToBuild.Keys))
+                currentStep = CraftingStep.Idle;
+            else
+            {
+                taskHandler.notifyTaskCompleted();
+                return;
+            }
         }
     }
 
-    private void BuildingUpdate()
+    private void CraftingUpdate()
     {
         buildTimer += Time.deltaTime;
 
         float buildRate = 1;
         if (buildTimer >= buildRate)
         {
-            // todo if there are gather mulitpliers, add logic for that here
+            // todo if there are craft mulitpliers, add logic for that here
             uint totalBuild = System.Convert.ToUInt32(buildTimer / buildRate);
             buildTimer -= totalBuild * buildRate;
 
@@ -124,15 +128,16 @@ public class CraftingTask : Task
         // if completing task, try to drop off first
         if (completingTask)
         {
-            target.target = findClosestTeamOrNeutralObjectsWithTag(Tags.TownCenterDropOff);
+            if (target.TargetMemory == null || !target.TargetMemory.Tag.Equals(Tags.TownCenter))
+                target.TargetMemory = findClosestTeamOrNeutralMemoriesWithTag(Tags.TownCenter);
 
-            if (target != null && Vector3.Distance(target.target.position, transform.position) <= 2)
+            if (target.TargetMemory != null && withinDistanceOfTarget(2))
             {
-                Inventory.transferAllOfTypes(inventory, target.target.root.GetComponent<Inventory>(), Tags.Resources);
+                Inventory.transferAllOfTypes(inventory, target.target.transform.root.GetComponent<Inventory>(), Tags.Resources);
                 taskHandler.notifyTaskCompleted();
                 return;
             }
-            else if (target == null)
+            else if (target.TargetMemory == null)
             {
                 taskHandler.notifyTaskCompleted();
                 return;
@@ -145,29 +150,27 @@ public class CraftingTask : Task
         
         if (hasBuildResources())
         {
-            currentStep = CraftingStep.Building;
+            currentStep = CraftingStep.Crafting;
         } else
         {
-            HashSet<GameObject> resoucePoints = getTeamOrNeutralObjectsWithTag(Tags.TownCenterDropOff);
-
-            resoucePoints.RemoveWhere(rp => !rp.transform.root.GetComponent<Inventory>().containsAny(leftToBuild.Keys));
-
-            Transform bestPlaceToGetResources = findClosest(resoucePoints);
+            if (target.TargetMemory == null || !target.TargetMemory.Tag.Equals(Tags.TownCenter))
+                target.TargetMemory = findClosestTeamOrNeutralMemoriesWithTag(Tags.TownCenter);
 
             // I'm not sure if workers should wait for more resources or quit their task
-            if (bestPlaceToGetResources == null)
+            if (target.TargetMemory == null)
             {
                 completingTask = true;
                 return;
             }
 
-            if (Vector3.Distance(target.target.position, bestPlaceToGetResources.position) <= 2)
+            if (withinDistanceOfTarget(2))
             {
-                Inventory.transferTypes(bestPlaceToGetResources.root.GetComponent<Inventory>(), inventory, leftToBuild.Keys, (uint)(MAX_WEIGHT - inventory.weight));
+                Inventory targetInventory = target.target.transform.root.GetComponent<Inventory>();
+                Inventory.transferTypes(targetInventory, inventory, leftToBuild.Keys, (uint)(MAX_WEIGHT - inventory.weight));
+                currentStep = CraftingStep.Crafting;
             }
             else
             {
-                target.target = bestPlaceToGetResources;
                 move();
                 currentStep = CraftingStep.MovingToResources;
             }
@@ -196,7 +199,7 @@ public class CraftingTask : Task
 
     enum CraftingStep
     {
-        Building,
+        Crafting,
         Idle,
         MovingToResources
     }
