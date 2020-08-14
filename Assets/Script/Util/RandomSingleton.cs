@@ -1,4 +1,6 @@
-﻿public class RandomSingleton
+﻿using System;
+
+public class RandomSingleton
 {
     private static RandomSingleton instance = null;
     private static readonly object padlock = new object();
@@ -43,5 +45,13 @@
     public double NextDouble()
     {
         return rnd.NextDouble();
+    }
+    public double NextNormalDistribution(double mean, double stdDev)
+    { 
+        double u1 = 1.0 - NextDouble(); 
+        double u2 = 1.0 - NextDouble();
+        double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) *
+                     Math.Sin(2.0 * Math.PI * u2); 
+        return mean + stdDev * randStdNormal;
     }
 }

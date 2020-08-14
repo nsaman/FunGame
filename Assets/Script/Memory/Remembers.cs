@@ -62,7 +62,7 @@ public class Remembers : MonoBehaviour
         {
             long currentKey = expiringQueue.First().Key;
             foreach (MemoryEntry memory in expiringQueue[currentKey])
-                Remove(memory);
+                Remove(memory, false);
             expiringQueue.Remove(currentKey);
         }
     }
@@ -72,6 +72,12 @@ public class Remembers : MonoBehaviour
         if (!memories.ContainsKey(tag))
             return new List<MemoryEntry>();
         return memories[tag].Values;
+    }
+
+    public bool hasMemoryOf(GameObject gameObject)
+    {
+        string objectTag = gameObject.transform.root.tag;
+        return memories.ContainsKey(objectTag) && memories[objectTag].ContainsKey(gameObject.GetInstanceID());
     }
 
     public MemoryEntry FindMemoryByGameObject(GameObject gameObject)
@@ -152,7 +158,7 @@ public class Remembers : MonoBehaviour
         if (memories.ContainsKey(memory.Tag) && memories[memory.Tag].ContainsKey(memory.InstanceID) && memories[memory.Tag][memory.InstanceID].TimeStamp <= memory.TimeStamp)
         {
             if (!memory.Moving)
-                Remove(memories[memory.Tag][memory.InstanceID]);
+                Remove(memories[memory.Tag][memory.InstanceID], true);
             else
             {
                 long expireTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 30000;
@@ -163,13 +169,16 @@ public class Remembers : MonoBehaviour
         }
     }
 
-    private void Remove(MemoryEntry memory)
+    private void Remove(MemoryEntry memory, bool newForgetTimeStamp)
     {
         if (memories.ContainsKey(memory.Tag) && memories[memory.Tag].ContainsKey(memory.InstanceID) && memories[memory.Tag][memory.InstanceID].TimeStamp <= memory.TimeStamp)
         {
             DeleteFromMemories(memory, null);
 
-            MemoryEntry newTimeStampMemory = new MemoryEntry(
+            MemoryEntry newTimeStampMemory = memory;
+            if (newForgetTimeStamp)
+            {
+                newTimeStampMemory = new MemoryEntry(
                 memory.InstanceID,
                 memory.Position,
                 memory.Moving,
@@ -177,6 +186,7 @@ public class Remembers : MonoBehaviour
                 memory.Tag,
                 memory.Team,
                 memory.Dangerous);
+            }
 
             forgetting[newTimeStampMemory.InstanceID] = newTimeStampMemory;
 

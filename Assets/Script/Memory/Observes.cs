@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System;
@@ -7,13 +6,16 @@ using System;
 public class Observes : MonoBehaviour
 {
     public const float OBERVATION_DELAY = 2f;
-    public const float OBERVATION_RADIUS = 20f;
+    public const float MAX_OBERVATION_RADIUS = 30f;
+    public const float MIN_OBERVATION_RADIUS = 15f;
+    public const float OBERVATION_RADIUS_INFLECTION = 30f;
     public static Vector3 EYE_LEVEL = new Vector3(0, .8f, .52f);
     public static float FORWARD = 0f;
 
     private float observationTimer;
     private Remembers remembers;
     private Target target;
+    private SkillsController skillsController;
     private float lookAngle = FORWARD;
     public float LookAngle { get => lookAngle; }
     RandomSingleton rnd = RandomSingleton.Instance;
@@ -25,6 +27,7 @@ public class Observes : MonoBehaviour
     {
         remembers = transform.root.gameObject.GetComponent<Remembers>();
         target = transform.root.gameObject.GetComponent<Target>();
+        skillsController = transform.root.gameObject.GetComponent<SkillsController>();
         resetObscured();
     }
 
@@ -53,7 +56,7 @@ public class Observes : MonoBehaviour
 
             Quaternion lookDirection = Quaternion.AngleAxis(lookAngle, Vector3.up) * transform.rotation;
             Vector3 eyePosition = transform.position + lookDirection * EYE_LEVEL;
-            Vector3 searchPosition = eyePosition + lookDirection * new Vector3(0, 0, OBERVATION_RADIUS);
+            Vector3 searchPosition = eyePosition + lookDirection * new Vector3(0, 0, observationRadius());
 
             // try looking at the target
             if (target != null)
@@ -62,7 +65,7 @@ public class Observes : MonoBehaviour
                 if (target.target != null)
                 {
                     // if we can see the target, track it
-                    if (Physics.Raycast(eyePosition, target.target.transform.position + new Vector3(0, .1f, 0) - eyePosition, out RaycastHit targetHit, OBERVATION_RADIUS * 4) && targetHit.collider.transform.root.gameObject.GetInstanceID() == target.target.GetInstanceID())
+                    if (Physics.Raycast(eyePosition, target.target.transform.position + new Vector3(0, .1f, 0) - eyePosition, out RaycastHit targetHit, observationRadius() * 4) && targetHit.collider.transform.root.gameObject.GetInstanceID() == target.target.GetInstanceID())
                     {
                         remembers.Remember(target.target);
                         resetObscured();
@@ -72,7 +75,7 @@ public class Observes : MonoBehaviour
                 else if (target.TargetMemory != null)
                 {
                     // if we can see something, check if it's the target. if not make sure to have logic to forget
-                    if (Physics.Raycast(eyePosition, target.TargetMemory.Position + new Vector3(0, .1f, 0) - eyePosition, out RaycastHit memoryHit, OBERVATION_RADIUS * 4))
+                    if (Physics.Raycast(eyePosition, target.TargetMemory.Position + new Vector3(0, .1f, 0) - eyePosition, out RaycastHit memoryHit, observationRadius() * 4))
                     {
                         GameObject collidedObject = memoryHit.collider.transform.root.gameObject;
                         if (collidedObject.GetInstanceID() == target.TargetMemory.InstanceID)
@@ -100,7 +103,7 @@ public class Observes : MonoBehaviour
                 }
             }
 
-            HashSet<MemoryEntry> expectedObserved = remembers.expectedObeserves(searchPosition, OBERVATION_RADIUS);
+            HashSet<MemoryEntry> expectedObserved = remembers.expectedObeserves(searchPosition, observationRadius());
             expectedObserved.RemoveWhere(memory => {
                 Vector3 slightlyAboveTheGroundPosition = memory.Position + new Vector3(0, .1f, 0);
 
@@ -124,7 +127,7 @@ public class Observes : MonoBehaviour
                 }
             }
 
-            Collider[] collisions = Physics.OverlapSphere(searchPosition, OBERVATION_RADIUS);
+            Collider[] collisions = Physics.OverlapSphere(searchPosition, observationRadius());
             HashSet<GameObject> alreadyViewed = new HashSet<GameObject>();
             HashSet<GameObject> seenObjects = new HashSet<GameObject>(collisions.Where(x =>
             {
@@ -141,6 +144,8 @@ public class Observes : MonoBehaviour
                 }
                 return false;
             }).Select(x => x.gameObject.transform.root.gameObject).ToList());
+
+            skillsController.gainXp(Skills.Scouting, (from seenObject in seenObjects where !remembers.hasMemoryOf(seenObject) select seenObject).Count());
 
             remembers.RememberAll(seenObjects);
 
@@ -162,6 +167,13 @@ public class Observes : MonoBehaviour
     {
         obscuringObject = null;
         obscuredPosition = Vector3.positiveInfinity;
+    }
+
+    private float observationRadius()
+    {
+        return (MAX_OBERVATION_RADIUS - MIN_OBERVATION_RADIUS) * 
+            (1 - 1/((skillsController.getLevel(Skills.Scouting) + OBERVATION_RADIUS_INFLECTION) / OBERVATION_RADIUS_INFLECTION))
+            + MIN_OBERVATION_RADIUS;
     }
 }
  

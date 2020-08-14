@@ -1,14 +1,18 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class CraftingTask : TargettedTask
 {
+    public const int SKILL_LEVEL_DIVISOR = 10;
+
     Dictionary<string, uint> leftToBuild = new Dictionary<string, uint>();
     CraftingStep currentStep;
     float buildTimer;
+    RandomSingleton rand;
 
-    Item buildItem;
-    public Item BuildItem
+    CraftedItem buildItem;
+    public CraftedItem BuildItem
     {
         get
         {
@@ -27,6 +31,7 @@ public class CraftingTask : TargettedTask
 
         currentStep = CraftingStep.Idle;
         completingTask = false;
+        rand = RandomSingleton.Instance;
     }
 
     void OnEnable()
@@ -88,8 +93,9 @@ public class CraftingTask : TargettedTask
         if (buildTimer >= buildRate)
         {
             // todo if there are craft mulitpliers, add logic for that here
-            uint totalBuild = System.Convert.ToUInt32(buildTimer / buildRate);
-            buildTimer -= totalBuild * buildRate;
+            uint buildTime = System.Convert.ToUInt32(buildTimer / buildRate);
+            uint totalBuild = System.Convert.ToUInt32(buildTime * (skills.getLevel(Skills.Crafting) / SKILL_LEVEL_DIVISOR + 1));
+            buildTimer -= buildTime * buildRate;
 
             Dictionary<Item, uint> resourceEntries = inventory.getEntriesOfTypes(Tags.Resources);
             if (resourceEntries.Count == 0)
@@ -107,6 +113,8 @@ public class CraftingTask : TargettedTask
                     countOfBuilt += finalBuildAmount;
                     inventory.remove(inventoryEntry.Key.Tag, finalBuildAmount);
 
+                    skills.gainXp(Skills.Crafting, (int)finalBuildAmount);
+
                     leftToBuild[inventoryEntry.Key.Tag] -= finalBuildAmount;
                     if (leftToBuild[inventoryEntry.Key.Tag] == 0)
                         leftToBuild.Remove(inventoryEntry.Key.Tag);
@@ -115,7 +123,9 @@ public class CraftingTask : TargettedTask
 
             if (leftToBuild.Count == 0)
             {
-                inventory.add(buildItem,1);
+                inventory.add(
+                    buildItem.craft(Math.Max(Math.Min(1f + (float)rand.NextNormalDistribution(skills.getLevel(Skills.Crafting)/100, .2),2), 1))
+                    , 1);
                 completingTask = true;
                 currentStep = CraftingStep.Idle;
             }
@@ -166,7 +176,7 @@ public class CraftingTask : TargettedTask
             if (withinDistanceOfTarget(2))
             {
                 Inventory targetInventory = target.target.transform.root.GetComponent<Inventory>();
-                Inventory.transferTypes(targetInventory, inventory, leftToBuild.Keys, (uint)(MAX_WEIGHT - inventory.weight));
+                Inventory.transferTypes(targetInventory, inventory, leftToBuild.Keys, (uint)(maxWeight() - inventory.weight));
                 currentStep = CraftingStep.Crafting;
             }
             else

@@ -1,12 +1,17 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
+using System;
 
 public abstract class GatheringTask : TargettedTask
 {
+    public const int SKILL_LEVEL_DIVISOR = 10;
 
     GatheringStep currentStep;
     float gatherTimer;
     bool waitForMoreResourcesAtTownCenter;
     protected string targetTag;
+    protected Skill usedSkill;
+    protected List<Skill> trainedSkills;
 
     // Use this for initialization
     public override void Start()
@@ -82,6 +87,11 @@ public abstract class GatheringTask : TargettedTask
 
     void MovingToResourceUpdate()
     {
+        MemoryEntry closestMemory = findClosestTeamOrNeutralMemoriesWithTag(targetTag);
+        if (closestMemory != null)
+        {
+            target.TargetMemory = closestMemory;
+        }
         // todo calculate stopping distance based on size of resource
         if (withinDistanceOfTarget(2))
             currentStep = GatheringStep.Gathering;
@@ -90,22 +100,26 @@ public abstract class GatheringTask : TargettedTask
     void GatheringUpdate()
     {
         dontMove();
-        if (target.target == null || inventory.weight >= MAX_WEIGHT)
+        if (target.target == null || inventory.weight >= maxWeight())
         {
             currentStep = GatheringStep.Idle;
             return;
         }
 
+        // this should be replaced by item speed/iteraction
         float gatherRate = 1 / (1 + getInteractionEquipedMultiplier(targetTag));
         gatherTimer += Time.deltaTime;
         if (gatherTimer >= gatherRate)
         {
-            // todo if there are gather mulitpliers, add logic for that here
-            uint totalGather = System.Convert.ToUInt32(gatherTimer / gatherRate);
-            gatherTimer -= totalGather * gatherRate;
+            uint gatherTime = Convert.ToUInt32(gatherTimer / gatherRate);
+            uint totalGather = Convert.ToUInt32(gatherTime * (skills.getLevel(usedSkill) / SKILL_LEVEL_DIVISOR + 1));
+            gatherTimer -= gatherTime * gatherRate;
 
             Inventory targetInventory = target.target.transform.root.GetComponent<Inventory>();
-            uint realGatherAmount = System.Math.Min(targetInventory.getTotalCountByTypes(Tags.Resources), totalGather);
+            uint realGatherAmount = Math.Min(targetInventory.getTotalCountByTypes(Tags.Resources), totalGather);
+
+            foreach (Skill skill in trainedSkills)
+                skills.gainXp(skill, (int)realGatherAmount);
 
             Inventory.transferTypes(targetInventory, inventory, Tags.Resources, realGatherAmount);
 
@@ -130,9 +144,9 @@ public abstract class GatheringTask : TargettedTask
                 taskHandler.notifyTaskCompleted();
                 return;
             }
-            transferBestForTask(transferInventory, targetTag);
+            transferBestForTask(transferInventory, targetTag, skills.getLevel(Skills.Strength) - 1);
             equipBestForTask(targetTag);
-            Item bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, targetTag, inventory.getEmptySlots());
+            CraftedItem bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, targetTag, inventory.getEmptySlots(), skills.getLevel(Skills.Strength) - 1);
             if (bestItemCanCraft != null)
             {
                 taskHandler.pushTask(Tasks.CraftingTask);
@@ -147,7 +161,7 @@ public abstract class GatheringTask : TargettedTask
         dontMove();
 
         // drop off if inventory is full
-        if (inventory.weight >= MAX_WEIGHT)
+        if (inventory.weight >= maxWeight())
         {
             dropOffTownCenter();
         }

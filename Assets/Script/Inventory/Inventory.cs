@@ -118,6 +118,8 @@ public class Inventory : MonoBehaviour {
         createEntry(item);
 
         inventory[item.Tag][item] += count;
+        if (!item.Stackable && inventory[item.Tag][item] > 1)
+            inventory[item.Tag][item] = 1;
 
         setTotalWeight();
     }

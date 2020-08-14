@@ -7,7 +7,7 @@ public class Berries : MonoBehaviour {
     {
         // todo, adjust resources based on size
         Dictionary<Item, uint> foods = new Dictionary<Item, uint>();
-        GetComponent<Inventory>().add(Items.createItemByTag(Tags.Food), 100);
+        GetComponent<Inventory>().add(Items.getItemByTag(Tags.Food), 100);
         GetComponent<Inventory>().setTotalWeight();
     }
     

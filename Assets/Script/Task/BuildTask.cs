@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 public class BuildTask : TargettedTask
 {
+    public const int SKILL_LEVEL_DIVISOR = 10;
 
     GameObject buildTarget;
     public GameObject BuildTarget
@@ -92,8 +93,9 @@ public class BuildTask : TargettedTask
         if (buildTimer >= buildRate)
         {
             // todo if there are gather mulitpliers, add logic for that here
-            uint totalBuild = System.Convert.ToUInt32(buildTimer / buildRate);
-            buildTimer -= totalBuild * buildRate;
+            uint buildTime = System.Convert.ToUInt32(buildTimer / buildRate);
+            uint totalBuild = System.Convert.ToUInt32(buildTime * (skills.getLevel(Skills.Construction) / SKILL_LEVEL_DIVISOR + 1));
+            buildTimer -= buildTime * buildRate;
             uint buildTracker = 0;
 
             Dictionary<Item, uint> resourceEntries = inventory.getEntriesOfTypes(Tags.Resources);
@@ -111,7 +113,10 @@ public class BuildTask : TargettedTask
                     inventory.remove(inventoryEntry.Key.Tag, finalBuildAmount);
                     buildSiteHandler.Built[inventoryEntry.Key.Tag] += finalBuildAmount;
 
-                    if(buildSiteHandler.NotifyBuild())
+                    skills.gainXp(Skills.Construction, (int)finalBuildAmount);
+                    skills.gainXp(Skills.Strength, (int)finalBuildAmount);
+
+                    if (buildSiteHandler.NotifyBuild())
                     {
                         remembers.Forget(buildTarget);
                         completingTask = true;
@@ -191,16 +196,16 @@ public class BuildTask : TargettedTask
             {
                 Inventory transferInventory = target.target.transform.root.gameObject.GetComponent<Inventory>();
                 Inventory.transferAll(inventory, transferInventory);
-                transferBestForTask(transferInventory, Tags.BuildSite);
+                transferBestForTask(transferInventory, Tags.BuildSite, skills.getLevel(Skills.Strength) - 1);
                 equipBestForTask(Tags.BuildSite);
-                Item bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, Tags.BuildSite, inventory.getEmptySlots());
+                CraftedItem bestItemCanCraft = bestItemCanCraftBySlots(transferInventory, Tags.BuildSite, inventory.getEmptySlots(), skills.getLevel(Skills.Strength) - 1);
                 if (bestItemCanCraft != null)
                 {
                     taskHandler.pushTask(Tasks.CraftingTask);
                     GetComponent<CraftingTask>().BuildItem = bestItemCanCraft;
                     return;
                 }
-                uint transferred = Inventory.transferTypes(transferInventory, inventory, resourcesLeftToBuild, (uint)(MAX_WEIGHT - inventory.weight));
+                uint transferred = Inventory.transferTypes(transferInventory, inventory, resourcesLeftToBuild, (uint)(maxWeight() - inventory.weight));
 
                 if (transferred != 0)
                     waitForResourcesTimer = 0;

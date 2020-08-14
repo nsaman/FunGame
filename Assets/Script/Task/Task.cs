@@ -1,14 +1,16 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public abstract class Task : MonoBehaviour
 {
+    public const int MIN_TARGET_WEIGHT = 2;
 
     protected bool completingTask;
     protected TaskHandler taskHandler;
-    public const uint MAX_WEIGHT = 3;
     protected EquipInventory inventory;
     protected Remembers remembers;
+    protected SkillsController skills;
 
     public virtual void Start()
     {
@@ -16,10 +18,16 @@ public abstract class Task : MonoBehaviour
         taskHandler = GetComponent<TaskHandler>();
         inventory = GetComponent<EquipInventory>();
         remembers = GetComponent<Remembers>();
+        skills = GetComponent<SkillsController>();
     }
 
     protected virtual void Update()
     {
+    }
+
+    public int maxWeight()
+    {
+        return Math.Max(MIN_TARGET_WEIGHT, skills.getLevel(Skills.Strength));
     }
 
     public abstract void completeTask();
@@ -111,23 +119,23 @@ public abstract class Task : MonoBehaviour
         return returnMemories;
     }
 
-    protected void transferBestForTask(Inventory sendingInvetory, string targetTag)
+    protected void transferBestForTask(Inventory sendingInvetory, string targetTag, int maxWeight)
     {
-        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableHeads));
-        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableChests));
-        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableMainHands));
-        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableOffHands));
-        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableLegs));
-        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableFeets));
+        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableHeads), maxWeight);
+        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableChests), maxWeight);
+        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableMainHands), maxWeight);
+        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableOffHands), maxWeight);
+        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableLegs), maxWeight);
+        transferForTaskFromItems(sendingInvetory, targetTag, sendingInvetory.getEntriesOfTypes(Tags.EquipableFeets), maxWeight);
     }
 
-    protected void transferForTaskFromItems(Inventory sendingInvetory, string targetTag, Dictionary<Item, uint> items)
+    protected void transferForTaskFromItems(Inventory sendingInvetory, string targetTag, Dictionary<Item, uint> items, int maxWeight)
     {
         EquipableItem currentItem = null;
         foreach (KeyValuePair<Item, uint> entry in items)
         {
             EquipableItem equipableItem = (EquipableItem)entry.Key;
-            if (equipableItem.getEffectivenessByTag(targetTag) > 1 && (currentItem == null || equipableItem.getEffectivenessByTag(targetTag) > currentItem.getEffectivenessByTag(targetTag)))
+            if (equipableItem.getEffectivenessByTag(targetTag) > 1 && (currentItem == null || equipableItem.getEffectivenessByTag(targetTag) > currentItem.getEffectivenessByTag(targetTag)) && equipableItem.Weight + inventory.weight <= maxWeight)
                 currentItem = equipableItem;
         }
         if (currentItem != null)
@@ -171,12 +179,12 @@ public abstract class Task : MonoBehaviour
             + (inventory.Feet != null ? inventory.Feet.getEffectivenessByTag(targetTag) : 0);
     }
 
-    protected static EquipableItem bestItemCanCraftBySlots(Inventory inventory, string targetTag, ICollection<EquipableItem.EquipSlot> slots)
+    protected static EquipableItem bestItemCanCraftBySlots(Inventory inventory, string targetTag, ICollection<EquipableItem.EquipSlot> slots, float maxWeight)
     {
         EquipableItem item = null;
         foreach (EquipableItem.EquipSlot slot in slots)
         {
-            EquipableItem currentItem = bestItemCanCraftBySlot(inventory, targetTag, slot);
+            EquipableItem currentItem = bestItemCanCraftBySlot(inventory, targetTag, slot, maxWeight);
             if (currentItem != null)
             {
                 if (item == null || currentItem.getEffectivenessByTag(targetTag) > item.getEffectivenessByTag(targetTag))
@@ -187,12 +195,13 @@ public abstract class Task : MonoBehaviour
         return item;
     }
 
-    protected static EquipableItem bestItemCanCraftBySlot(Inventory inventory, string targetTag, EquipableItem.EquipSlot slot)
+    protected static EquipableItem bestItemCanCraftBySlot(Inventory inventory, string targetTag, EquipableItem.EquipSlot slot, float maxWeight)
     {
         EquipableItem item = null;
         foreach(EquipableItem currentItem in EquipableItem.getItemsByEquipSlot(slot))
         {
-            if(inventory.canBuild(currentItem) && 
+            if(currentItem.Weight <= maxWeight &&
+                inventory.canBuild(currentItem) && 
                 ((item == null && currentItem.getEffectivenessByTag(targetTag) > 0) || 
                 (item != null && currentItem.getEffectivenessByTag(targetTag) > item.getEffectivenessByTag(targetTag))))
                 item = currentItem;

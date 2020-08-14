@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
+using System;
 
-public abstract class EquipableItem : Item {
-
+public abstract class EquipableItem : CraftedItem
+{
     protected EquipSlot equippableSlot;
     protected Dictionary<string, float> itemEffects;
 
@@ -16,7 +17,7 @@ public abstract class EquipableItem : Item {
     public float getEffectivenessByTag(string tag)
     {
         if (itemEffects.ContainsKey(tag))
-            return (itemEffects[tag]);
+            return Math.Max(itemEffects[tag], (itemEffects[tag]) * quality);
         else
             return 0;
     }
@@ -53,7 +54,7 @@ public abstract class EquipableItem : Item {
             return items;
 
         foreach (string tag in tagsToAdd)
-            items.Add((EquipableItem)Items.createItemByTag(tag));
+            items.Add((EquipableItem)Items.getItemByTag(tag));
 
         return items;
     }

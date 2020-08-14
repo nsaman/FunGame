@@ -4,6 +4,8 @@ using System.Linq;
 
 public class EquipInventory : Inventory
 {
+    public const float BASE_SPEED = 5;
+
     EquipableItem head;
     GameObject headGameObject;
     EquipableItem chest;
@@ -17,6 +19,7 @@ public class EquipInventory : Inventory
     EquipableItem feet;
     GameObject feetGameObject;
     Observes observes;
+
     protected new void Start()
     {
         base.Start();
@@ -133,7 +136,7 @@ public class EquipInventory : Inventory
         if (containsItem(item))
         {
             head = item;
-            headGameObject = (GameObject)Object.Instantiate(Resources.Load(item.PreFab));
+            headGameObject = (GameObject)Instantiate(Resources.Load(item.PreFab));
             headGameObject.transform.parent = gameObject.transform.root;
             headGameObject.transform.localPosition = Vector3.zero;
             headGameObject.transform.rotation = Quaternion.Euler(0, 0, 0);

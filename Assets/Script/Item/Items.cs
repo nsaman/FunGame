@@ -21,19 +21,11 @@ public static class Items
         {wood.Tag, wood}
     };
 
-    public static Item createItemByTag(string tag)
+    public static Item getItemByTag(string tag)
     {
         if (!items.ContainsKey(tag))
             return null;
 
-        Item referenceItem = items[tag];
-
-        if (referenceItem.Stackable)
-            return referenceItem;
-        else
-        {
-            Type type = referenceItem.GetType();
-            return (Item)Activator.CreateInstance(type);
-        }
+        return items[tag];
     }
 }
